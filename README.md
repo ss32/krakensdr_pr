@@ -146,6 +146,10 @@ To stop the software run the stop script:
 ./kraken_pr_stop.sh
 ```
 
+### Known Issues
+
+Warnings from `numba` are expected and due to a future deprecation of jit `objectType` compilation.  See https://numba.readthedocs.io/en/stable/reference/deprecation.html#deprecation-of-object-mode-fall-back-behaviour-when-using-jit for more information. 
+
 ### Troubleshooting 
 
  * Check the contents of `krakensdr_pr/ui.log`
