@@ -413,8 +413,10 @@ figure_font_size = 20
 
 # Data Logging
 if webInterface_inst.log_imagery or webInterface_inst.log_raw_radar:
-    os.makedirs(webInterface_inst.image_dir,666,exist_ok=True)
-    os.makedirs(webInterface_inst.radar_dir,666,exist_ok=True)
+    webInterface_inst.logger.info(f"Saving data to {webInterface_inst.data_output_directory}. Files will be owned by root.")
+    webInterface_inst.logger.info(f"When finished run sudo -R $USER:$USER {webInterface_inst.data_output_directory}")
+    os.makedirs(webInterface_inst.image_dir,777,exist_ok=True)
+    os.makedirs(webInterface_inst.radar_dir,777,exist_ok=True)
 
 
 y=np.random.normal(0,1,2**3)
