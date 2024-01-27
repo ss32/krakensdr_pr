@@ -52,6 +52,7 @@ from multiprocessing.dummy import Pool
 
 from pathlib import Path
 import pickle
+import signal
 
 c = 299792458
 
@@ -2004,11 +2005,36 @@ def reconfig_daq_chain(input_value, freq, gain):
 
     return Output("daq_cfg_files", "value", daq_config_filename), Output("active_daq_ini_cfg", "children", "Active Configuration: " + webInterface_inst.active_daq_ini_cfg)
 
+# From https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully
+class GracefulKiller:
+  kill_now = False
+  def __init__(self):
+    signal.signal(signal.SIGINT, self.exit_gracefully)
+    signal.signal(signal.SIGTERM, self.exit_gracefully)
+    signal.signal(signal.SIGRTMAX, self.exit_gracefully)
+
+  def exit_gracefully(self, signum, frame):
+    webInterface_inst.logger.info("Got kill signal. Cleaning up data permissions...")
+    print("Got kill signal...")
+    print("EXITING")
+    
+    if webInterface_inst.log_imagery or webInterface_inst.log_raw_radar:
+        print("CLEANING UP LOGS")
+        os.system(f'chmod -R 755 {webInterface_inst.data_output_directory}')
+        os.system(f'chmod -R 755 {webInterface_inst.image_dir}')
+        os.system(f'chmod -R 755 {webInterface_inst.image_dir}/*')
+        os.system(f'chmod -R 755 {webInterface_inst.radar_dir}')
+        os.system(f'chmod -R 755 {webInterface_inst.radar_dir}/*')
+
+
 
 if __name__ == "__main__":    
     # For Development only, otherwise use gunicorn    
     # Debug mode does not work when the data interface is set to shared-memory "shmem"! 
-    app.run_server(debug=False, host="0.0.0.0", port=8080)
+    killer = GracefulKiller()
+    while not killer.kill_now:
+        app.run_server(debug=False, host="0.0.0.0", port=8080)
+
     #waitress #serve(app.server, host="0.0.0.0", port=8050)
 
 """
