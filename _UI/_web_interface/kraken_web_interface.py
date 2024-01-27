@@ -2075,7 +2075,8 @@ def fetch_dsp_data():
         webInterface_inst.pathname == "/pr" and doa_update_flag
     ):  # or (webInterface_inst.pathname == "/doa" and webInterface_inst.reset_doa_graph_flag):
         plot_pr()
-
+    if doa_update_flag and (webInterface_inst.log_imagery or webInterface_inst.log_raw_radar):
+        plot_pr()
     webInterface_inst.dsp_timer = Timer(0.01, fetch_dsp_data)
     webInterface_inst.dsp_timer.start()
 
@@ -2242,7 +2243,6 @@ def display_page(pathname):
     elif pathname == "/spectrum":
         webInterface_inst.module_signal_processor.en_spectrum = True
         spectrum_fig = None  # Force reload of graphs as axes may change etc
-        # time.sleep(1)
         return [
             spectrum_page_layout,
             "header_inactive",
@@ -2511,61 +2511,6 @@ def plot_pr():
                 )
             ],
         )
-
-        ######################
-
-        # pr_fig = go.Figure(layout=fig_layout)
-        # pr_fig.add_trace(go.Heatmap(
-        # z=CAFMatrixLog,
-        # x=x_range,
-        # y=y_range,
-        # zsmooth='best', #False,
-        # # zsmooth=False, #False,
-        # showscale=False,
-        # # hoverinfo='skip',
-        # colorscale=[[0.0, '#000020'],
-        # [0.0714, '#000030'],
-        # [0.1428, '#000050'],
-        # [0.2142, '#000091'],
-        # [0.2856, '#1E90FF'],
-        # [0.357, '#FFFFFF'],
-        # [0.4284, '#FFFF00'],
-        # [0.4998, '#FE6D16'],
-        # [0.5712, '#FE6D16'],
-        # [0.6426, '#FF0000'],
-        # [0.714, '#FF0000'],
-        # [0.7854, '#C60000'],
-        # [0.8568, '#9F0000'],
-        # [0.9282, '#750000'],
-        # [1.0, '#4A0000']]))
-
-        # pr_fig.update_xaxes(title_text="Bistatic Range [km]",
-        # color='rgba(255,255,255,1)',
-        # title_font_size=20,
-        # # tickfont_size=figure_font_size,
-        # # mirror=True,
-        # ticks='outside',
-        # showline=True)
-        # pr_fig.update_yaxes(title_text="Bistatic Speed [km/h]",
-        # color='rgba(255,255,255,1)',
-        # title_font_size=20,
-        # # tickfont_size=figure_font_size,
-        # # range=[-5, 5],
-        # # mirror=True,
-        # ticks='outside',
-        # showline=True)
-
-        # # Constants
-        # img_width = 900
-        # img_height = 800
-
-        # # Configure other layout
-        # pr_fig.update_layout(
-        # # xaxis=dict(showgrid=False, zeroline=False, range=[xmin, xmax]),
-        # # yaxis=dict(showgrid=False, zeroline=False, range=[ymin, ymax]),
-        # width=img_width,
-        # height=img_height,
-        # )
 
         app.push_mods(
             {
