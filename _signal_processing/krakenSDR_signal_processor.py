@@ -263,7 +263,7 @@ class SignalProcessor(threading.Thread):
                             # surv_ch, w = cc.Wiener_SMI_MRE(ref_ch, surv_ch, td_filter_dimension)
 
                         end = time.time()
-                        print("Time: " + str((end - start) * 1000))
+                        #print("Time: " + str((end - start) * 1000))
 
                         surv_ch = numba_mult(
                             surv_ch, get_window(surv_ch.size)
