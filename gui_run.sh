@@ -1,8 +1,4 @@
 #!/bin/bash
-
-IPADDR="0.0.0.0"
-IPPORT="8081"
-
 echo "Starting KrakenSDR Passive Radar"
 
 # Use only for debugging

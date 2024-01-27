@@ -43,12 +43,6 @@ import pyfftw
 import scipy
 from scipy import fft
 from scipy import signal
-from scipy.signal import correlate
-from scipy.signal import convolve
-
-from pyapril import channelPreparation as cp
-from pyapril import clutterCancellation as cc
-from pyapril import detector as det
 
 c_dtype = np.complex64
 

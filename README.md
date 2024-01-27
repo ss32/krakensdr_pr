@@ -146,9 +146,25 @@ To stop the software run the stop script:
 ./kraken_pr_stop.sh
 ```
 
+### Data Logging
+
+To enable data logging edit `settings.json` and set one or both of `save_radar_plots` and `save_raw_radar_data` to `true`.
+
+```json
+  "save_radar_plots": true,
+  "save_raw_radar_data": true,
+  "data_output_directory": "/tmp/radar_data"
+```
+
+You may also specify where to save the data.  By default this is `/tmp/radar_data`.
+
+![clip](./images/radar.gif)
+
+
 ### Known Issues
 
 Warnings from `numba` are expected and due to a future deprecation of jit `objectType` compilation.  See https://numba.readthedocs.io/en/stable/reference/deprecation.html#deprecation-of-object-mode-fall-back-behaviour-when-using-jit for more information. 
+
 
 ### Troubleshooting 
 
