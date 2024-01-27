@@ -160,6 +160,12 @@ You may also specify where to save the data.  By default this is `/tmp/radar_dat
 
 ![clip](./images/radar.gif)
 
+
+### Known Issues
+
+Warnings from `numba` are expected and due to a future deprecation of jit `objectType` compilation.  See https://numba.readthedocs.io/en/stable/reference/deprecation.html#deprecation-of-object-mode-fall-back-behaviour-when-using-jit for more information. 
+
+
 ### Troubleshooting 
 
  * Check the contents of `krakensdr_pr/ui.log`

@@ -300,8 +300,8 @@ class SignalProcessor(threading.Thread):
 def numba_mult(a,b):
     return a * b
 
-@jit(fastmath=True)
-def Wiener_SMI_MRE(ref_ch, surv_ch, K):
+@jit(fastmath=True, nopython=False)
+def Wiener_SMI_MRE(ref_ch: np.array, surv_ch: np.array, K: int) -> np.array:
     """
         Description:
         ------------
@@ -356,13 +356,13 @@ def get_window(size):
     return signal.hamming(size)
 
 #Memoize ~50ms speedup?
-@lru_cache(maxsize=2)
-def R_eye_memoize(K):
+@jit(fastmath=True, nopython=False, cache=True)
+def R_eye_memoize(K: int) -> np.array:
     return (np.ones(K) - np.eye(K) * 0.5)
 
 #Modified pruned correlation, returns R and r directly and saves one FFT
-@jit(fastmath=True, cache=True)
-def pruned_correlation(ref_ch, surv_ch, clen, N):
+@jit(fastmath=True, nopython=False, cache=True)
+def pruned_correlation(ref_ch: np.array, surv_ch: np.array, clen: int, N: int) -> (np.array, np.array):
     """
         Description:
         -----------
@@ -393,17 +393,19 @@ def pruned_correlation(ref_ch, surv_ch, clen, N):
     rows = np.int32(N / (cols)) + 1
 
     zeropads = cols * rows - N
-    x = np.pad(ref_ch, (0, zeropads))
-
+    # Adds zeropads 0s to end of ref_channel
+    # np.pad not supported by numba
+    x = np.zeros((ref_ch.shape[0]+zeropads),dtype=c_dtype)
+    x[:ref_ch.shape[0]] = ref_ch
+    
+    
     # shaping inputs into matrices
     xp = np.reshape(x, (rows, cols))
 
     # padding matrices for FFT
-    ypp = np.vstack([xp[1:, :], np.zeros(cols, dtype=c_dtype)]) #vstack appears to be faster than pad
-    yp = np.concatenate([xp, ypp], axis=1)
-
-    #print("pruned corr xp shape: " + str(xp.shape))
-    #print("pruned corr yp shape: " + str(yp.shape))
+    pad_zeros = np.zeros(cols, dtype=c_dtype)
+    ypp = np.vstack((xp[1:, :], pad_zeros)) #vstack appears to be faster than pad
+    yp = np.concatenate((xp, ypp),axis=1,dtype=c_dtype)
 
     # execute FFT on the matrices
     xpw = fft.fft(xp, n = 2*cols, axis=1, workers=4, overwrite_x=True)
