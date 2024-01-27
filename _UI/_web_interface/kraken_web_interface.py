@@ -253,6 +253,11 @@ class webInterface():
         data["krakenpro_key"] = self.krakenpro_key
         data["doa_data_format"] = "Kraken Pro Remote" # Force this
 
+        # Data logging
+        data["save_radar_plots"] = self.log_imagery
+        data["save_raw_radar_data"] = self.log_raw_radar
+        data["data_output_directory"] = self.data_output_directory
+        
         #settings.write(data)
         with open(settings_file_path, 'w') as outfile:
             json.dump(data, outfile, indent=2)
