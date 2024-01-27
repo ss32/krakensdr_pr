@@ -158,13 +158,6 @@ To enable data logging edit `settings.json` and set one or both of `save_radar_p
 
 You may also specify where to save the data.  By default this is `/tmp/radar_data`.
 
-> ![NOTE]
-> Due to permissions requirements for running the processing toolchain the imagery and data directories and files will be owned by root. This can be corrected by running 
-> ```bash
-> sudo chown $USER:$USER /tmp/radar_data/
-> sudo chmod -R 777 /tmp/radar_data/
-> ```
-
 ![clip](./images/radar.gif)
 
 ### Troubleshooting 
