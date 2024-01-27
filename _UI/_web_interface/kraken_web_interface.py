@@ -27,7 +27,6 @@ import time
 import subprocess
 import json
 import requests
-import math
 # Import third-party modules
 
 import dash_core_components as dcc
@@ -36,19 +35,15 @@ import dash_html_components as html
 import dash_devices as dash
 from dash_devices.dependencies import Input, Output, State
 
-from dash.exceptions import PreventUpdate
 from dash.dash import no_update
 import plotly.graph_objects as go
 import plotly.express as px
-import plotly.io as pio
 
 import numpy as np
 from configparser import ConfigParser
-from numba import njit, jit
 
 from PIL import Image, ImageDraw
 from matplotlib import cm
-from matplotlib.colors import Normalize
 import matplotlib.colors as colors
 from skimage.transform import resize
 
@@ -257,7 +252,7 @@ class webInterface():
         data["save_radar_plots"] = self.log_imagery
         data["save_raw_radar_data"] = self.log_raw_radar
         data["data_output_directory"] = self.data_output_directory
-        
+
         #settings.write(data)
         with open(settings_file_path, 'w') as outfile:
             json.dump(data, outfile, indent=2)
