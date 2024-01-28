@@ -7,7 +7,7 @@ from pathlib import Path
 from target_detection import simple_target_tracker
 from target_detection import CFAR_2D
 import pickle
-from celluloid import Camera
+import cv2
 
 c = 299792458
 
@@ -73,9 +73,12 @@ if __name__ == "__main__":
     Nframes = data.shape[2]
     print("Applying CFAR filter...")
     # CFAR filter each frame using a 2D kernel
-    CF = np.zeros(data.shape)
+    CF = np.zeros_like(data)
+    #CF = np.zeros((data.shape[0],data.shape[1],30))
     for i in tqdm(range(Nframes)):
-        CF[:,:,i] = CFAR_2D(data[:,:,i], 18, 4)
+        CF[:,:,i] = CFAR_2D(data[:,:,i], 36, 4)
+        # if i==29:
+        #     break
 
     print("Applying Kalman Filter...")
     max_range = 64
@@ -105,18 +108,25 @@ if __name__ == "__main__":
     #     plt.show()
 
     # else:
-
+    video_file_path = "TRACKER.mp4"
+    framerate=30
+    width = 1600
+    height = 900
     savedir = os.path.join(os.getcwd(),  "IMG")
     if not os.path.isdir(savedir):
         os.makedirs(savedir)
-    # else:
-    #     figure = plt.figure(figsize = (8, 4.5))
-    #     camera = Camera(figure)
+    video_codec = cv2.VideoWriter_fourcc(*"mp4v")
+    video_out = cv2.VideoWriter(
+        video_file_path,
+        video_codec,
+        framerate,
+        (width, height),
+    )
+
 
     print("Rendering frames...")
     # loop over frames
     figure = plt.figure(figsize = (8, 4.5))
-    camera = Camera(figure)
     for kk in tqdm(range(Nframes)):
 
         # add a digital phosphor effect to make targets easier to see
@@ -158,10 +168,14 @@ if __name__ == "__main__":
         plt.ylabel('Bistatic Range (km)')
         plt.xlabel('Doppler Shift (Hz)')
         plt.tight_layout()
-        camera.snap()
-        # plt.savefig(svname, dpi=200)
+        figure.canvas.draw()
+        img_plot = np.frombuffer(figure.canvas.buffer_rgba(), dtype=np.uint8).reshape(height,width,4)
+        img_plot = img_plot[:,:,0:3]
+        video_out.write(img_plot[:,:,::-1])
+        plt.savefig(svname, dpi=100)
         # plt.close()
         figure.clf()
-    animation = camera.animate(interval=33) # 25 fps
-    animation.save("SIMPLE_TRACKER_VIDEO.mp4", writer='ffmpeg')
+        # if kk == 29:
+        #     break
+    video_out.release()
 
