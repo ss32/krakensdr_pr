@@ -7,6 +7,7 @@ from pathlib import Path
 from target_detection import simple_target_tracker
 from target_detection import CFAR_2D
 import pickle
+from celluloid import Camera
 
 c = 299792458
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     print("Loading data files")
     for i,f in enumerate(files):
         fin = data_dir / f
-        data[:,:,i] = load_pickle(fin)
+        data[:,:,i] = load_pickle(fin) * 255.0
 
     Nframes = data.shape[2]
     print("Applying CFAR filter...")
@@ -155,7 +156,9 @@ if __name__ == "__main__":
         plt.ylabel('Bistatic Range (km)')
         plt.xlabel('Doppler Shift (Hz)')
         plt.tight_layout()
-
-        plt.savefig(svname, dpi=200)
-        plt.close()
+        Camera.snap()
+        # plt.savefig(svname, dpi=200)
+        # plt.close()
+    animation = Camera.animate(interval=33) # 25 fps
+    animation.save("SIMPLE_TRACKER_VIDEO.mp4", writer='ffmpeg')
 
