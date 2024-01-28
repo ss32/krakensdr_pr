@@ -115,6 +115,8 @@ if __name__ == "__main__":
 
     print("Rendering frames...")
     # loop over frames
+    figure = plt.figure(figsize = (8, 4.5))
+    camera = Camera(figure)
     for kk in tqdm(range(Nframes)):
 
         # add a digital phosphor effect to make targets easier to see
@@ -124,7 +126,7 @@ if __name__ == "__main__":
             # get the save name for this frame
         svname = os.path.join(savedir, 'img_' + "{0:0=3d}".format(kk) + '.png')
         # make a figure
-        figure = plt.figure(figsize = (8, 4.5))
+
     
 
         # get max and min values for the color map (this is ad hoc, change as
@@ -156,9 +158,10 @@ if __name__ == "__main__":
         plt.ylabel('Bistatic Range (km)')
         plt.xlabel('Doppler Shift (Hz)')
         plt.tight_layout()
-        Camera.snap()
+        camera.snap()
         # plt.savefig(svname, dpi=200)
         # plt.close()
-    animation = Camera.animate(interval=33) # 25 fps
+        figure.clf()
+    animation = camera.animate(interval=33) # 25 fps
     animation.save("SIMPLE_TRACKER_VIDEO.mp4", writer='ffmpeg')
 
