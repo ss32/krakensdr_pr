@@ -61,31 +61,35 @@ if __name__ == "__main__":
 
     data_dir = Path(args.data_path)
     files = os.listdir(str(data_dir))
+    files.sort()
     # Allocate memory
     # Open one file to peek the size of the arrays
     tmp = load_pickle(data_dir / files[0])
-    data = np.zeros((tmp.shape[0],tmp.shape[1],len(files)))
+    raw_data = np.zeros((tmp.shape[0],tmp.shape[1],len(files)))
     print("Loading data files")
     for i,f in enumerate(files):
         fin = data_dir / f
-        data[:,:,i] = load_pickle(fin) * 255.0
+        raw_data[:,:,i] = load_pickle(fin) * 255.0
 
-    Nframes = data.shape[2]
+    Nframes = raw_data.shape[2]
     print("Applying CFAR filter...")
     # CFAR filter each frame using a 2D kernel
-    CF = np.zeros_like(data)
-    #CF = np.zeros((data.shape[0],data.shape[1],30))
-    for i in tqdm(range(Nframes)):
-        CF[:,:,i] = CFAR_2D(data[:,:,i], 36, 4)
-        # if i==29:
-        #     break
+    #CF = np.zeros_like(data)
+    cutoff = 150
+    # CF = np.zeros((raw_data.shape[0],raw_data.shape[1],cutoff+1))
+    # for i in tqdm(range(Nframes)):
+    #     CF[:,:,i] = CFAR_2D(raw_data[:,:,i], 36, 4)
+    #     if i==cutoff:
+    #         break
 
     print("Applying Kalman Filter...")
     max_range = 64
     max_speed = 1000
-    center_freq = 488.31
+    center_freq = 488.31*10**6
     max_doppler_shift = ((max_speed / 3.6)* center_freq) / c
-    history = simple_target_tracker(CF, max_range, max_doppler_shift)
+    print(f"Max doppler shift: {max_doppler_shift}")
+    #history = simple_target_tracker(CF, max_range, max_doppler_shift)
+    history = simple_target_tracker(raw_data, max_range, max_doppler_shift)
 
     estimate = history['estimate']
     measurement = history['measurement']
@@ -110,11 +114,19 @@ if __name__ == "__main__":
     # else:
     video_file_path = "TRACKER.mp4"
     framerate=30
-    width = 1600
-    height = 900
+    fig_width = 8
+    fig_height = 4.5
     savedir = os.path.join(os.getcwd(),  "IMG")
     if not os.path.isdir(savedir):
         os.makedirs(savedir)
+
+
+
+    print("Rendering frames...")
+    # loop over frames
+    figure = plt.figure(figsize = (fig_width, fig_height))
+    figure.canvas.draw()
+    width, height, _ = np.array(figure.canvas.renderer.buffer_rgba(), dtype=np.uint8).shape
     video_codec = cv2.VideoWriter_fourcc(*"mp4v")
     video_out = cv2.VideoWriter(
         video_file_path,
@@ -122,17 +134,13 @@ if __name__ == "__main__":
         framerate,
         (width, height),
     )
-
-
-    print("Rendering frames...")
-    # loop over frames
-    figure = plt.figure(figsize = (8, 4.5))
     for kk in tqdm(range(Nframes)):
 
         # add a digital phosphor effect to make targets easier to see
-        data = persistence(CF, kk, 20, 0.90)
+        #data = persistence(CF, kk, 20, 0.90)
+        data = persistence(raw_data, kk, 20, 0.1)
         data = np.fliplr(data.T) # get the orientation right
-
+        #data = np.flipud(data)
             # get the save name for this frame
         svname = os.path.join(savedir, 'img_' + "{0:0=3d}".format(kk) + '.png')
         # make a figure
@@ -159,8 +167,8 @@ if __name__ == "__main__":
             cc2 = col @ np.diag([1.0, 0.2, 0.3, 1.0])
             cc1[:,3] = decay
             cc2[:,3] = decay
-            plt.scatter(estimate_locked[:kk,1], estimate_locked[:kk,0], 8,  marker='.', color=cc1)
-            plt.scatter(estimate_unlocked[:kk,1], estimate_unlocked[:kk,0], 8,  marker='.', color=cc2)
+            plt.scatter(estimate_locked[:kk,1], estimate_locked[:kk,0], 8,  marker='o', color='lime')
+            plt.scatter(estimate_unlocked[:kk,1], estimate_unlocked[:kk,0], 8,  marker='o', color='mediumspringgreen')
 
         plt.xlim([-1*max_doppler_shift,max_doppler_shift])
         plt.ylim([0,max_range])
@@ -168,14 +176,15 @@ if __name__ == "__main__":
         plt.ylabel('Bistatic Range (km)')
         plt.xlabel('Doppler Shift (Hz)')
         plt.tight_layout()
+        # plt.gca().invert_yaxis()
         figure.canvas.draw()
-        img_plot = np.frombuffer(figure.canvas.buffer_rgba(), dtype=np.uint8).reshape(height,width,4)
+        img_plot = np.array(figure.canvas.renderer.buffer_rgba(), dtype=np.uint8)
         img_plot = img_plot[:,:,0:3]
         video_out.write(img_plot[:,:,::-1])
         plt.savefig(svname, dpi=100)
         # plt.close()
         figure.clf()
-        # if kk == 29:
-        #     break
+        if kk == cutoff:
+            break
     video_out.release()
 

@@ -2,7 +2,6 @@
 
 import numpy as np
 import scipy.signal as signal
-
 def normalize(x):
     '''normalize ndarray to unit mean'''
     return x/np.mean(np.abs(x).flatten())
