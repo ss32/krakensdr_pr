@@ -11,6 +11,23 @@ import cv2
 
 c = 299792458
 
+def clean_raw_data(data: np.array, window_percentage = 2)-> np.array:
+    print('Cleaning data')
+    y,x = data.shape[0:2]
+    data_new = data.copy()
+    height = window_percentage/100 * y
+    y_start = int(y / 2 - height)
+    y_end = int(y_start + 2 * height)
+    x_start = 0
+    x_end = x
+    if len(data.shape) > 2:
+        for z in range(data.shape[2]):
+            data_new[y_start:y_end,x_start:x_end,z] = data[:,:,z].mean()
+    else:
+        data_new[y_start:y_end,x_start:x_end] = data.mean()
+    return data_new
+    
+
 def persistence(X, k, hold, decay):
     '''Add persistence (digital phosphor) effect along the time axis of 
     a sequence of range-doppler maps
@@ -72,24 +89,16 @@ if __name__ == "__main__":
         raw_data[:,:,i] = load_pickle(fin) * 255.0
 
     Nframes = raw_data.shape[2]
-    print("Applying CFAR filter...")
-    # CFAR filter each frame using a 2D kernel
-    #CF = np.zeros_like(data)
-    cutoff = 150
-    # CF = np.zeros((raw_data.shape[0],raw_data.shape[1],cutoff+1))
-    # for i in tqdm(range(Nframes)):
-    #     CF[:,:,i] = CFAR_2D(raw_data[:,:,i], 36, 4)
-    #     if i==cutoff:
-    #         break
 
-    print("Applying Kalman Filter...")
     max_range = 64
     max_speed = 1000
     center_freq = 488.31*10**6
     max_doppler_shift = ((max_speed / 3.6)* center_freq) / c
     print(f"Max doppler shift: {max_doppler_shift}")
     #history = simple_target_tracker(CF, max_range, max_doppler_shift)
-    history = simple_target_tracker(raw_data, max_range, max_doppler_shift)
+    cleaned = clean_raw_data(raw_data,.4)
+    print("Applying Kalman Filter...")
+    history = simple_target_tracker(cleaned, max_range, max_doppler_shift)
 
     estimate = history['estimate']
     measurement = history['measurement']
@@ -103,15 +112,6 @@ if __name__ == "__main__":
     estimate_unlocked[~unlocked, 0] = np.nan
     estimate_unlocked[~unlocked, 1] = np.nan
 
-    # if args.output == 'plot':
-    #     plt.figure(figsize=(12,8))
-    #     plt.plot(estimate_locked[:,1], estimate_locked[:,0], 'b', linewidth=3)
-    #     plt.plot(estimate_unlocked[:,1], estimate_unlocked[:,0], c='r', linewidth=1, alpha=0.3)
-    #     plt.xlabel('Doppler Shift (Hz)')
-    #     plt.ylabel('Bistatic Range (km)')
-    #     plt.show()
-
-    # else:
     video_file_path = "TRACKER.mp4"
     framerate=30
     fig_width = 8
@@ -119,7 +119,6 @@ if __name__ == "__main__":
     savedir = os.path.join(os.getcwd(),  "IMG")
     if not os.path.isdir(savedir):
         os.makedirs(savedir)
-
 
 
     print("Rendering frames...")
@@ -132,23 +131,15 @@ if __name__ == "__main__":
         video_file_path,
         video_codec,
         framerate,
-        (width, height),
+        (height, width),
     )
     for kk in tqdm(range(Nframes)):
 
-        # add a digital phosphor effect to make targets easier to see
-        #data = persistence(CF, kk, 20, 0.90)
         data = persistence(raw_data, kk, 20, 0.1)
         data = np.fliplr(data.T) # get the orientation right
-        #data = np.flipud(data)
-            # get the save name for this frame
         svname = os.path.join(savedir, 'img_' + "{0:0=3d}".format(kk) + '.png')
-        # make a figure
 
-    
 
-        # get max and min values for the color map (this is ad hoc, change as
-        # u see fit)
         vmn = np.percentile(data.flatten(), 35)
         vmx = 1.5*np.percentile(data.flatten(),99)
 
@@ -168,7 +159,7 @@ if __name__ == "__main__":
             cc1[:,3] = decay
             cc2[:,3] = decay
             plt.scatter(estimate_locked[:kk,1], estimate_locked[:kk,0], 8,  marker='o', color='lime')
-            plt.scatter(estimate_unlocked[:kk,1], estimate_unlocked[:kk,0], 8,  marker='o', color='mediumspringgreen')
+            plt.scatter(estimate_unlocked[:kk,1], estimate_unlocked[:kk,0], 8,  marker='o', color='red')
 
         plt.xlim([-1*max_doppler_shift,max_doppler_shift])
         plt.ylim([0,max_range])
@@ -176,15 +167,11 @@ if __name__ == "__main__":
         plt.ylabel('Bistatic Range (km)')
         plt.xlabel('Doppler Shift (Hz)')
         plt.tight_layout()
-        # plt.gca().invert_yaxis()
         figure.canvas.draw()
         img_plot = np.array(figure.canvas.renderer.buffer_rgba(), dtype=np.uint8)
         img_plot = img_plot[:,:,0:3]
-        video_out.write(img_plot[:,:,::-1])
-        plt.savefig(svname, dpi=100)
-        # plt.close()
+        cv_frame = img_plot[:,:,::-1]
+        video_out.write(cv_frame)
+        cv2.imwrite(svname,cv_frame)
         figure.clf()
-        if kk == cutoff:
-            break
     video_out.release()
-
