@@ -4,7 +4,7 @@ import os
 import argparse
 from tqdm import tqdm
 from pathlib import Path
-from target_detection import simple_target_tracker
+from target_detection import simple_target_tracker, multitarget_tracker
 from target_detection import CFAR_2D
 import pickle
 import cv2
@@ -14,7 +14,7 @@ c = 299792458
 def clean_raw_data(data: np.array, window_percentage = 2)-> np.array:
     print('Cleaning data')
     y,x = data.shape[0:2]
-    data_new = data.copy()
+    data_new = data.copy() * 0.5
     height = window_percentage/100 * y
     y_start = int(y / 2 - height)
     y_end = int(y_start + 2 * height)
@@ -26,7 +26,14 @@ def clean_raw_data(data: np.array, window_percentage = 2)-> np.array:
     else:
         data_new[y_start:y_end,x_start:x_end] = data.mean()
     return data_new
-    
+
+def threshold_data(data: np.array) -> np.array:
+    binary = np.zeros_like(data)
+    print("Applying thresholding")
+    #return cv2.threshold(data,2200,5000,cv2.THRESH_BINARY)
+    for i in range(data.shape[2]):
+        _, binary[:,:,i] = cv2.threshold(data[:,:,i],4800,500000,cv2.THRESH_BINARY)
+    return binary
 
 def persistence(X, k, hold, decay):
     '''Add persistence (digital phosphor) effect along the time axis of 
@@ -98,8 +105,10 @@ if __name__ == "__main__":
     #history = simple_target_tracker(CF, max_range, max_doppler_shift)
     cleaned = clean_raw_data(raw_data,.4)
     print("Applying Kalman Filter...")
-    history = simple_target_tracker(cleaned, max_range, max_doppler_shift)
-
+    binary = threshold_data(cleaned)
+    history = simple_target_tracker(binary, max_range, max_doppler_shift)
+    #history = multitarget_tracker(cleaned, [max_range, max_doppler_shift], 2)
+    video_file_path = "tracker_binary.mp4"
     estimate = history['estimate']
     measurement = history['measurement']
     lockMode = history['lock_mode']
@@ -112,7 +121,7 @@ if __name__ == "__main__":
     estimate_unlocked[~unlocked, 0] = np.nan
     estimate_unlocked[~unlocked, 1] = np.nan
 
-    video_file_path = "TRACKER.mp4"
+    
     framerate=30
     fig_width = 8
     fig_height = 4.5
@@ -120,7 +129,7 @@ if __name__ == "__main__":
     if not os.path.isdir(savedir):
         os.makedirs(savedir)
 
-
+    
     print("Rendering frames...")
     # loop over frames
     figure = plt.figure(figsize = (fig_width, fig_height))
@@ -129,6 +138,12 @@ if __name__ == "__main__":
     video_codec = cv2.VideoWriter_fourcc(*"mp4v")
     video_out = cv2.VideoWriter(
         video_file_path,
+        video_codec,
+        framerate,
+        (height, width),
+    )
+    video_out2 = cv2.VideoWriter(
+        "binary.mp4",
         video_codec,
         framerate,
         (height, width),
@@ -172,6 +187,16 @@ if __name__ == "__main__":
         img_plot = img_plot[:,:,0:3]
         cv_frame = img_plot[:,:,::-1]
         video_out.write(cv_frame)
-        cv2.imwrite(svname,cv_frame)
+        bin = np.fliplr(binary[:,:,kk].T)
+        video_out2.write(bin)
+        cv2.imwrite(svname,bin)
+        #print(f"Binary max: {binary[:,:,kk].max()}, Clean max: {cleaned[:,:,kk].max()}")
         figure.clf()
     video_out.release()
+    video_out2.release()
+    # maxes = []
+    # for z in range(cleaned.shape[2]):
+    #     maxes.append(cleaned[:,:,z].max())
+    # plt.plot(maxes,'-')
+    # plt.savefig('max_values.png',dpi=200)
+    # plt.show()
