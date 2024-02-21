@@ -4,12 +4,26 @@ import os
 import argparse
 from tqdm import tqdm
 from pathlib import Path
-from target_detection import simple_target_tracker, multitarget_tracker
+from target_detection import simple_target_tracker, multitarget_tracker, find_centroid
 from target_detection import CFAR_2D
 import pickle
 import cv2
 
 c = 299792458
+def scale_data(data: tuple, old_shape: tuple, new_shape: tuple) -> tuple:
+    '''
+    Interp 2D, sort of. 
+    Takes old_shape (width, height) and scales data (x,y) to new_shape (width,height)
+    '''
+    alpha = old_shape[0] / new_shape[0]
+    new_x = data[0] / alpha - new_shape[0] / 2
+
+    beta = old_shape[1] / new_shape[1]
+    new_y = new_shape[1] - (data[1] / beta)
+
+    return (new_x, new_y)
+    
+
 
 def clean_raw_data(data: np.array, window_percentage = 2)-> np.array:
     print('Cleaning data')
@@ -30,7 +44,6 @@ def clean_raw_data(data: np.array, window_percentage = 2)-> np.array:
 def threshold_data(data: np.array) -> np.array:
     binary = np.zeros_like(data)
     print("Applying thresholding")
-    #return cv2.threshold(data,2200,5000,cv2.THRESH_BINARY)
     for i in range(data.shape[2]):
         _, binary[:,:,i] = cv2.threshold(data[:,:,i],4800,500000,cv2.THRESH_BINARY)
     return binary
@@ -106,8 +119,7 @@ if __name__ == "__main__":
     cleaned = clean_raw_data(raw_data,.4)
     print("Applying Kalman Filter...")
     binary = threshold_data(cleaned)
-    history = simple_target_tracker(binary, max_range, max_doppler_shift)
-    #history = multitarget_tracker(cleaned, [max_range, max_doppler_shift], 2)
+    history = simple_target_tracker(cleaned, max_range, max_doppler_shift)
     video_file_path = "tracker_binary.mp4"
     estimate = history['estimate']
     measurement = history['measurement']
@@ -149,7 +161,6 @@ if __name__ == "__main__":
         (height, width),
     )
     for kk in tqdm(range(Nframes)):
-
         data = persistence(raw_data, kk, 20, 0.1)
         data = np.fliplr(data.T) # get the orientation right
         svname = os.path.join(savedir, 'img_' + "{0:0=3d}".format(kk) + '.png')
@@ -174,8 +185,15 @@ if __name__ == "__main__":
             cc1[:,3] = decay
             cc2[:,3] = decay
             plt.scatter(estimate_locked[:kk,1], estimate_locked[:kk,0], 8,  marker='o', color='lime')
-            plt.scatter(estimate_unlocked[:kk,1], estimate_unlocked[:kk,0], 8,  marker='o', color='red')
 
+            #plt.scatter(estimate_unlocked[:kk,1], estimate_unlocked[:kk,0], 8,  marker='o', color='red')
+        if binary[:,:,kk].max() != 0:
+            c = find_centroid(np.fliplr(binary[:,:,kk].T))
+            old_shape = binary[:,:,kk].shape[0:2]
+            new_shape = (max_doppler_shift*2,max_range)
+            centroid = scale_data(c,old_shape,new_shape)
+            if centroid[0] is not None:
+                plt.plot(centroid[0], centroid[1],marker='o',color='red')
         plt.xlim([-1*max_doppler_shift,max_doppler_shift])
         plt.ylim([0,max_range])
 
@@ -188,8 +206,8 @@ if __name__ == "__main__":
         cv_frame = img_plot[:,:,::-1]
         video_out.write(cv_frame)
         bin = np.fliplr(binary[:,:,kk].T)
-        video_out2.write(bin)
-        cv2.imwrite(svname,bin)
+        # video_out2.write(bin)
+        cv2.imwrite(svname,cv_frame)
         #print(f"Binary max: {binary[:,:,kk].max()}, Clean max: {cleaned[:,:,kk].max()}")
         figure.clf()
     video_out.release()
