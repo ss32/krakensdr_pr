@@ -28,7 +28,7 @@ sudo apt install libfftw3-3 libfftw3-dev python3-pip
 
 If not done already, first, follow the instructions at https://github.com/ss32/heimdall_daq_fw to install the Heimdall DAQ Firmware.
 
-3. Clone the `krakensdr_pr`` software
+3. Clone the `krakensdr_pr` software
 
 ```bash
 cd ~/kraknrf
